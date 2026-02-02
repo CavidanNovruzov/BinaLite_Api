@@ -1,0 +1,24 @@
+﻿
+
+namespace Application.Shared.Helpers.Responses;
+
+public class BaseResponse<T>
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public T? Data { get; set; }
+    public static BaseResponse<T> Ok(T? data=default,string? message=null)
+        =>new() { Success=true,Data=data,Message=message };
+    public static BaseResponse<T> Fail(string message)
+        =>new() { Success=false,Message=message, Data=default };
+}
+
+public class BaseResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public static BaseResponse Ok(string? message = null)
+        => new() { Success = true, Message = message };
+    public static BaseResponse Fail(string message)
+        => new() { Success = false, Message = message};
+}
