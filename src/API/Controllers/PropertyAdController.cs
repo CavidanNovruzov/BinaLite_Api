@@ -1,6 +1,8 @@
 ﻿using Application.Abstracts.Services;
 using Application.Dtos.PropertyAd;
 using Application.Shared.Helpers.Responses;
+using Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -17,6 +19,8 @@ namespace API.Controllers
         {
             _service = service;
         }
+
+        [Authorize(Policy = Policies.ManageProperties)]
         [HttpPost]
         public async Task<BaseResponse<GetByIdPropertyAdResponse>> Create([FromBody] CreatePropertyAdRequest request, CancellationToken ct)
         {
@@ -41,6 +45,7 @@ namespace API.Controllers
             return BaseResponse<List<GetAllPropertyAdResponse>>.Ok(result);
         }
 
+        [Authorize(Policy = Policies.ManageProperties)]
         [HttpPut("{id}")]
         public async Task<BaseResponse<UpdatePropertyAdResponse>> Update(int id, [FromBody] UpdatePropertyAdRequest request, CancellationToken ct)
         {
@@ -48,6 +53,7 @@ namespace API.Controllers
             return BaseResponse<UpdatePropertyAdResponse>.Ok(result, "Property ad updated successfully.");
         }
 
+        [Authorize(Policy = Policies.ManageProperties)]
         [HttpDelete("{id}")]
         public async Task<BaseResponse> Delete(int id, CancellationToken ct)
         {

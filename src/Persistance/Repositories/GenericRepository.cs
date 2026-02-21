@@ -29,12 +29,12 @@ public class GenericRepository<TEntity, TKey> : IRepository<TEntity, TKey> where
     {
         await _table.AddAsync(entity);
     }
-    public void Update(TEntity entity)
+    public void Update(TEntity entity, CancellationToken ct = default)
     {
         _table.Update(entity);
     }
 
-    public void Delete(TEntity entity)
+    public void Delete(TEntity entity, CancellationToken ct = default)
     {
         _table.Remove(entity);
     }
@@ -43,6 +43,5 @@ public class GenericRepository<TEntity, TKey> : IRepository<TEntity, TKey> where
     {
         await _context.SaveChangesAsync();
     }
-
 
 }
