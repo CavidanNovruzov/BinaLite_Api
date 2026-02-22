@@ -4,25 +4,31 @@ using Application.Options;
 using Domain.Constants;
 using Domain.Entities.Auth;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
+
 
 namespace Persistance.Services.Auth;
 
 public class AuthService : IAuthService
 {
+    private readonly IEmailSender _emailSender;
+    private readonly SmtpOptions _emailOptions;
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly IJwtTokenGenerator _jwtGenerator;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly JwtOptions _jwtOptions;
 
+
+
     public AuthService(
-    UserManager<User> userManager,
-    SignInManager<User> signInManager,
-    IJwtTokenGenerator jwtGenerator,
-    IRefreshTokenService refreshTokenService,
-    IOptions<JwtOptions> jwtOptions
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        IJwtTokenGenerator jwtGenerator,
+        IRefreshTokenService refreshTokenService,
+        IOptions<JwtOptions> jwtOptions,
+        IEmailSender emailSender,          
+        IOptions<SmtpOptions> emailOptions 
     )
     {
         _userManager = userManager;
@@ -30,6 +36,9 @@ public class AuthService : IAuthService
         _jwtGenerator = jwtGenerator;
         _refreshTokenService = refreshTokenService;
         _jwtOptions = jwtOptions.Value;
+
+        _emailSender = emailSender;
+        _emailOptions = emailOptions.Value;
     }
     public async Task<(bool Success, string? Error)> RegisterAsync(RegistrRequest request, CancellationToken ct = default)
     {
@@ -45,8 +54,8 @@ public class AuthService : IAuthService
             return (false, string.Join(" ", result.Errors.Select(e => e.Description)));
         await _userManager.AddToRoleAsync(user, RoleNames.User);
 
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+      
         var link =
             $"{_emailOptions.ConfirmEmailBaseUrl.TrimEnd('/')}?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
 
@@ -95,5 +104,16 @@ public class AuthService : IAuthService
             RefreshToken = refreshToken,
             ExpiresAtUtc = expiresAt
         };
+    }
+
+    public async Task<bool> ConfirmEmailAsync(string userId, string token, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return false;
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+
+        return result.Succeeded;
     }
 }

@@ -14,19 +14,14 @@ public class PropertyMediaService : IPropertyMediaService
 {
     private readonly IPropertyMediaRepository _repository;
     private readonly IMapper _mapper;
-    private readonly IValidator<CreatePropertyMediaRequest> _createvalidator;
-    private readonly IValidator<UpdatePropertyMediaRequest> _updatevalidator;
 
-    public PropertyMediaService(IPropertyMediaRepository repository, IMapper mapper,IValidator<CreatePropertyMediaRequest> createvalidator,IValidator<UpdatePropertyMediaRequest> updatevalidator)
+    public PropertyMediaService(IPropertyMediaRepository repository, IMapper mapper)
     {
         _repository = repository;
         _mapper = mapper;
-        _createvalidator = createvalidator;
-        _updatevalidator = updatevalidator;
     }
     public async Task<GetByIdPropertyMediaResponse> CreatePropertyMediaAsync(CreatePropertyMediaRequest request, CancellationToken ct = default)
     {
-        await _createvalidator.ValidateAndThrowAsync(request,ct);
         // 1. request → entity mapping
         var entity = _mapper.Map<PropertyMedia>(request);
 
@@ -66,7 +61,6 @@ public class PropertyMediaService : IPropertyMediaService
 
     public async Task<UpdatePropertyMediaResponse> UpdatePropertyMediaAsync(int id, UpdatePropertyMediaRequest request, CancellationToken ct = default)
     {     
-        await _updatevalidator.ValidateAndThrowAsync(request, ct);  
         var propertyMedia= await _repository.GetByIdAsync(id, ct);
         if (propertyMedia == null)
             throw new KeyNotFoundException($"PropertyMedia with id {id} not found.");

@@ -1,5 +1,4 @@
 ﻿
-using API.Options;
 using Application.Abstracts.Repositories;
 using Application.Abstracts.Repositories.Auth;
 using Application.Abstracts.Services;
@@ -12,6 +11,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,17 +44,38 @@ public static class ServiceCollectionExtensions
         {
             options.Password.RequiredLength = 8;
             options.User.RequireUniqueEmail = true;
-        }).AddEntityFrameworkStores<BinaLiteDbContext>();
+        }).AddEntityFrameworkStores<BinaLiteDbContext>().AddDefaultTokenProviders();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-         .AddJwtBearer();
-        services.ConfigureOptions<ConfigureJwtBearerOptions>();
+    .AddJwtBearer(options =>
+    {
+        var jwt = configuration.GetSection("Jwt").Get<JwtOptions>();
+
+        if (jwt == null || string.IsNullOrWhiteSpace(jwt.Secret))
+            throw new Exception("JWT config is missing");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwt.Secret)),
+
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
         // AutoMapper 
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -73,7 +94,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-     
+
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+
 
         // Swagger
         services.AddEndpointsApiExplorer();

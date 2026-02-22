@@ -11,15 +11,10 @@ namespace Persistance.Services
     public class CityService : ICityService
     {
         private readonly ICityRepository _cityRepository;
-        private readonly IValidator<CreateCityRequest> _createValidator;
-        private readonly IValidator<UpdateCityRequest> _updateValidator;
 
-        public CityService(ICityRepository cityRepository, IValidator<CreateCityRequest> createValidator,
-            IValidator<UpdateCityRequest> updateValidator)
+        public CityService(ICityRepository cityRepository)
         {
             _cityRepository = cityRepository;
-            _createValidator = createValidator;
-            _updateValidator = updateValidator;
         }
 
         public async Task<bool> CreateCityAsync(CreateCityRequest request, CancellationToken ct = default)

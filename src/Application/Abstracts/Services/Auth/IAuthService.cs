@@ -14,5 +14,6 @@ namespace Application.Abstracts.Services.Auth
         Task<TokenResponse?> RefreshTokenAsync(string refreshToken);
 
         Task<TokenResponse?> BuildTokenResponseAsync(User user,CancellationToken ct = default);
+        Task<bool> ConfirmEmailAsync(string userId, string token, CancellationToken ct = default);
     }
 }

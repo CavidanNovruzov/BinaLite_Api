@@ -11,15 +11,11 @@ namespace Persistance.Services
     public class DistrictService : IDistrictService
     {
         private readonly IDistrictRepository _districtRepository;
-        private readonly IValidator<CreateDistrictRequest> _validator;
-        private readonly IValidator<UpdateDistrictRequest> _updateValidator;
         public DistrictService(IDistrictRepository districtRepository,
             IValidator<CreateDistrictRequest> validator,
             IValidator<UpdateDistrictRequest> updateValidator)
         {
             _districtRepository = districtRepository;
-            _validator = validator;
-            _updateValidator = updateValidator;
         }
         public async Task<bool> CreateDistrictAsync(CreateDistrictRequest request, CancellationToken ct = default)
         {

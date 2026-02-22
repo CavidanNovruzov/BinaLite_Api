@@ -10,17 +10,12 @@ namespace Persistance.Services;
 public class PropertyAdService : IPropertyAdService
 {
     private readonly IPropertyAdRepository _repository;
-    private readonly IValidator<CreatePropertyAdRequest> _createvalidator; 
-    private readonly IValidator<UpdatePropertyAdRequest> _updatevalidator;
-    public PropertyAdService(IPropertyAdRepository repository, IValidator<UpdatePropertyAdRequest> updatevalidator,IValidator<CreatePropertyAdRequest> createvalidator)
+    public PropertyAdService(IPropertyAdRepository repository)
     {
         _repository = repository;
-        _updatevalidator = updatevalidator;
-        _createvalidator = createvalidator;
     }
     public async Task<GetByIdPropertyAdResponse> CreatePropertyAdAsync(CreatePropertyAdRequest request, CancellationToken ct = default)
     {
-        await _createvalidator.ValidateAndThrowAsync(request, ct);
         var propertyAd = new PropertyAd
         {
             Title = request.Title,
@@ -31,8 +26,10 @@ public class PropertyAdService : IPropertyAdService
             IsExtract = request.IsExtract,
             IsMortgage = request.IsMortgage,
             OfferType = request.OfferType,
-            PropertyCategory = request.PropertyCategory
+            PropertyCategory = request.PropertyCategory,
+            UpdatedAt = DateTime.Now
         };
+  
         await _repository.AddAsync(propertyAd, ct);
         await _repository.SaveChangesAsync(ct);
         return new GetByIdPropertyAdResponse
@@ -85,7 +82,6 @@ public class PropertyAdService : IPropertyAdService
 
     public async Task<UpdatePropertyAdResponse> UpdateAsync(int id, UpdatePropertyAdRequest request, CancellationToken ct = default)
     {
-        await _updatevalidator.ValidateAndThrowAsync(request, ct);
         var propertyAd = await _repository.GetByIdAsync(id, ct);
         if (propertyAd == null)
           throw new KeyNotFoundException($"PropertyAd with id {id} not found.");   
