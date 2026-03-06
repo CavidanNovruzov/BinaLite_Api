@@ -12,27 +12,33 @@ public class AuthController(IAuthService authService) : ControllerBase
 {
     private readonly IAuthService _authService = authService;
 
-
-    [HttpPost("registr")]
+    
+    [HttpPost("register")]
     [AllowAnonymous]
     public async Task<IActionResult> Register(RegistrRequest request, CancellationToken ct)
     {
-        var (success, error) = await _authService.RegisterAsync(request, ct);
-        if (!success)
-            return BadRequest(BaseResponse.Fail(error ?? "Registration failed"));
-        return Ok(BaseResponse.Ok("User registered successfully"));
+        var result = await _authService.RegisterAsync(request, ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(BaseResponse.Fail(result.Error!));
+
+        return Ok(BaseResponse.Ok("User registered successfully. Email təsdiq linki göndərildi."));
     }
+
 
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
-        var tokenResponse = await _authService.LoginAsync(request, ct);
-        if (tokenResponse == null)
-            return Unauthorized(BaseResponse.Fail("Invalid login or password"));
+        var result = await _authService.LoginAsync(request, ct);
 
-        return Ok(BaseResponse<TokenResponse>.Ok(tokenResponse));
+        if (!result.IsSuccess)
+            return BadRequest(BaseResponse.Fail(result.Error!));
+
+        return Ok(BaseResponse<TokenResponse>.Ok(result.Value));
     }
+
+
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
@@ -40,27 +46,29 @@ public class AuthController(IAuthService authService) : ControllerBase
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
             return BadRequest(BaseResponse.Fail("Refresh token is required"));
 
-        var tokenResponse = await _authService.RefreshTokenAsync(request.RefreshToken);
-        if (tokenResponse == null)
-            return Unauthorized(BaseResponse.Fail("Invalid or expired refresh token"));
+        var result = await _authService.RefreshTokenAsync(request.RefreshToken);
 
-        return Ok(BaseResponse<TokenResponse>.Ok(tokenResponse));
+        if (!result.IsSuccess)
+            return Unauthorized(BaseResponse.Fail(result.Error!));
+
+        return Ok(BaseResponse<TokenResponse>.Ok(result.Value));
     }
 
+    
     [HttpGet("confirm-email")]
     [AllowAnonymous]
     public async Task<ActionResult<BaseResponse>> ConfirmEmail(
-    [FromQuery] string? userId,
-    [FromQuery] string? token,
-    CancellationToken ct)
+        [FromQuery] string? userId,
+        [FromQuery] string? token,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
             return BadRequest(BaseResponse.Fail("userId və token tələb olunur."));
 
-        var ok = await _authService.ConfirmEmailAsync(userId, token, ct);
+        var result = await _authService.ConfirmEmailAsync(userId, token, ct);
 
-        if (!ok)
-            return BadRequest(BaseResponse.Fail("Token etibarsız və ya vaxtı keçib."));
+        if (!result.IsSuccess)
+            return BadRequest(BaseResponse.Fail(result.Error!));
 
         return Ok(BaseResponse.Ok("Email təsdiqləndi."));
     }

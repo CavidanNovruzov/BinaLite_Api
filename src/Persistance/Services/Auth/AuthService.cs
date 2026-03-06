@@ -1,4 +1,5 @@
 ﻿using Application.Abstracts.Services.Auth;
+using Application.Common.Results;
 using Application.Dtos.Auth;
 using Application.Options;
 using Domain.Constants;
@@ -40,7 +41,7 @@ public class AuthService : IAuthService
         _emailSender = emailSender;
         _emailOptions = emailOptions.Value;
     }
-    public async Task<(bool Success, string? Error)> RegisterAsync(RegistrRequest request, CancellationToken ct = default)
+    public async Task<Result> RegisterAsync(RegistrRequest request, CancellationToken ct = default)
     {
         var user = new User
         {
@@ -50,14 +51,18 @@ public class AuthService : IAuthService
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
+
         if (!result.Succeeded)
-            return (false, string.Join(" ", result.Errors.Select(e => e.Description)));
+            return Result.Failure(string.Join(" ", result.Errors.Select(e => e.Description)));
+
         await _userManager.AddToRoleAsync(user, RoleNames.User);
 
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-      
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
         var link =
-            $"{_emailOptions.ConfirmEmailBaseUrl.TrimEnd('/')}?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
+            $"{_emailOptions.ConfirmEmailBaseUrl.TrimEnd('/')}" +
+            $"?userId={Uri.EscapeDataString(user.Id)}" +
+            $"&token={Uri.EscapeDataString(token)}";
 
         var html = $"<p>Hesabınızı təsdiqləmək üçün <a href=\"{link}\">bu linkə</a> keçid edin.</p>";
 
@@ -69,29 +74,40 @@ public class AuthService : IAuthService
             ct
         );
 
-        return (true, null);
+        return Result.Success();
     }
-    public async Task<TokenResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<Result<TokenResponse>> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await _userManager.FindByEmailAsync(request.Login)
             ?? await _userManager.FindByNameAsync(request.Login);
+
         if (user == null)
-            return null;
-        var ok = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (!ok.Succeeded)
-            return null;
-        return await BuildTokenResponseAsync(user);
+            return Result<TokenResponse>.Failure("İstifadəçi tapılmadı.");
+
+        if (!user.EmailConfirmed)
+            return Result<TokenResponse>.Failure("Email təsdiqlənməyib.");
+
+        var check = await _signInManager.CheckPasswordSignInAsync(user, request.Password, true);
+
+        if (!check.Succeeded)
+            return Result<TokenResponse>.Failure("Şifrə yanlışdır.");
+
+        var token = await BuildTokenResponseAsync(user);
+
+        return Result<TokenResponse>.Success(token);
     }
 
-    public async Task<TokenResponse?> RefreshTokenAsync(string refreshToken)
+    public async Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken)
     {
         var user = await _refreshTokenService.ValidateAndConsumeAsync(refreshToken);
+
         if (user == null)
-            return null;
+            return Result<TokenResponse>.Failure("Refresh token etibarsız və ya vaxtı keçib.");
 
-        return await BuildTokenResponseAsync(user);
+        var token = await BuildTokenResponseAsync(user);
+
+        return Result<TokenResponse>.Success(token);
     }
-
     public async Task<TokenResponse?> BuildTokenResponseAsync(User user, CancellationToken ct = default)
     {
         var roles =await _userManager.GetRolesAsync(user);
@@ -106,14 +122,21 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<bool> ConfirmEmailAsync(string userId, string token, CancellationToken ct = default)
+    public async Task<Result> ConfirmEmailAsync(string userId, string token, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId);
+
         if (user == null)
-            return false;
+            return Result.Failure("İstifadəçi tapılmadı.");
+
+        if (user.EmailConfirmed)
+            return Result.Failure("Email artıq təsdiqlənib.");
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
 
-        return result.Succeeded;
+        if (!result.Succeeded)
+            return Result.Failure("Token etibarsız və ya vaxtı keçib.");
+
+        return Result.Success();
     }
 }

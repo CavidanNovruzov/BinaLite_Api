@@ -33,7 +33,8 @@ public class SmtpEmailSender : IEmailSender
             using var client = new SmtpClient(_options.SmtpHost, _options.SmtpPort)
             {
                 EnableSsl = _options.UseSsl,
-                DeliveryMethod = SmtpDeliveryMethod.Network
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                 UseDefaultCredentials = false,
             };
 
             if (!string.IsNullOrWhiteSpace(_options.UserName))
